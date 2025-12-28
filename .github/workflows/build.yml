@@ -1,0 +1,34 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build MarkdownAtlas
+      run: make build
+
+    - name: Verify build
+      run: |
+        test -f build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        file build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+
+    - name: Create artifact
+      run: |
+        cd build && zip -r ../MarkdownAtlas.zip MarkdownAtlas.app
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MarkdownAtlas-${{ github.sha }}
+        path: MarkdownAtlas.zip
+        retention-days: 30

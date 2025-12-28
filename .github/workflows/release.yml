@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build MarkdownAtlas
+      run: make build
+
+    - name: Verify build
+      run: |
+        test -f build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        file build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        ls -lh build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+
+    - name: Create release package
+      run: |
+        cd build && zip -r ../MarkdownAtlas-${{ github.ref_name }}.zip MarkdownAtlas.app
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: MarkdownAtlas-${{ github.ref_name }}.zip
+        body: |
+          ## MarkdownAtlas ${{ github.ref_name }}
+
+          A privacy-focused, offline macOS markdown viewer. No telemetry, no internet connection required, zero dependencies, under 1000 lines of code.
+
+          ### Installation
+          1. Download `MarkdownAtlas-${{ github.ref_name }}.zip`
+          2. Unzip the file
+          3. Move `MarkdownAtlas.app` to your Applications folder
+          4. **Important:** Bypass macOS Gatekeeper (app is not code-signed)
+             - **Option A:** Right-click the app and select "Open", then click "Open" in the dialog
+             - **Option B:** Run `xattr -cr /Applications/MarkdownAtlas.app` in Terminal
+             - **Option C:** Go to System Settings > Privacy & Security, find the blocked message, click "Open Anyway"
+
+          ### Usage
+          ```bash
+          # Open with folder
+          open -a MarkdownAtlas /path/to/docs
+
+          # Open a single markdown file
+          open -a MarkdownAtlas /path/to/file.md
+
+          # Or drag a folder/file onto the app icon
+          ```
+
+          ### What's New
+          See the [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for changes.
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

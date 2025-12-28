@@ -1,6 +1,9 @@
-# MarkdownAtlas
+# MarkdownAtlas - Private, No Telemetry, Offline Markdown Viewer
 
-A lightweight macOS markdown viewer built with native Cocoa. Zero dependencies, less than 1000 lines of code.
+[![Build](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/build.yml/badge.svg)](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/build.yml)
+[![Release](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/release.yml/badge.svg)](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/release.yml)
+
+A privacy-focused, offline macOS markdown viewer. No telemetry, no internet connection required, zero dependencies, less than 1000 lines of code.
 
 ![screenshot](./screenshot.png)
 ## Why MarkdownAtlas?
@@ -90,7 +93,8 @@ Create a symlink for global access:
 
 ```bash
 mkdir -p ~/.local/bin
-ln -s $(pwd)/build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas ~/.local/bin/mda
+cd build
+ln -s $(pwd)/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas ~/.local/bin/mda
 ```
 
 Make sure `~/.local/bin` is in your PATH:
