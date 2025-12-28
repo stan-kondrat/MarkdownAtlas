@@ -1,5 +1,8 @@
 # MarkdownAtlas
 
+[![Build](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/build.yml/badge.svg)](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/build.yml)
+[![Release](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/release.yml/badge.svg)](https://github.com/stan-kondrat/MarkdownAtlas/actions/workflows/release.yml)
+
 A lightweight macOS markdown viewer built with native Cocoa. Zero dependencies, less than 1000 lines of code.
 
 ![screenshot](./screenshot.png)
@@ -90,7 +93,7 @@ Create a symlink for global access:
 
 ```bash
 mkdir -p ~/.local/bin
-ln -s $(pwd)/build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas ~/.local/bin/mda
+ln -s MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas ~/.local/bin/mda
 ```
 
 Make sure `~/.local/bin` is in your PATH:
