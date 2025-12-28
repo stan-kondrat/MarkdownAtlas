@@ -1,4 +1,4 @@
-# Heading 1
+# Markdown Examples
 
 ## Heading 2
 
@@ -28,9 +28,10 @@ Ordered list:
 
 ## Links and Images
 
-[Link to Google](https://www.google.com)
+[Link to example.com](https://www.example.com)
 
-![Alt text for image](https://via.placeholder.com/150)
+![Alt text for image](./300x200.png)
+![Alt text for wrong image](./image_not_found.png)
 
 ## Code
 
@@ -50,7 +51,7 @@ function greet(name) {
 }
 ```
 
-## Blockquotes
+## Blockquotes300x200
 
 > This is a blockquote.
 > It can span multiple lines.
@@ -66,8 +67,12 @@ function greet(name) {
 | A        | B        | C        |
 | D        | E        | F        |
 
+More examples [Tables](tables.md)
+
 ## Task List
 
 - [x] Completed task
 - [ ] Incomplete task
 - [ ] Another task
+
+More examples [Checkboxes](checkboxes.md)

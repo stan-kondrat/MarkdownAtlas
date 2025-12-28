@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024px" height="1024px">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0" style="stop-color:#4A90E2;stop-opacity:1"/>
+      <stop offset="1" style="stop-color:#357ABD;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)" id="object-0"/>
+  <rect width="1024" height="512" rx="230" style="fill: rgba(255, 255, 255, 0.43);" id="object-1"/>
+  <path d="M 89.514 387.085 L 89.514 179.843 L 327.661 179.843 L 375.29 248.924 L 946.842 248.924 L 946.842 801.569 L 89.514 801.569 L 89.514 387.085 Z" fill="#FFFFFF" opacity="0.9" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="round" style="stroke-width: 23.342;" id="object-2"/>
+  <text style="fill: rgb(57, 126, 196); fill-rule: evenodd; font-family: Helvetica, Arial, sans-serif; font-size: 360px; font-weight: 700; paint-order: stroke; text-anchor: middle; white-space: pre;" x="663.36" y="696.911" transform="matrix(1.4358659982681274, 0, 0, 1.301990032196045, -425.0508728027344, -209.21080017089844)" id="object-3">MD</text>
+</svg>
