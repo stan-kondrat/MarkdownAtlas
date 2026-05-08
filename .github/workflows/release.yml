@@ -9,37 +9,83 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build-arm64:
     runs-on: macos-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Build MarkdownAtlas
-      run: make build
+    - name: Build arm64
+      run: make build-arm64
 
     - name: Verify build
       run: |
-        test -f build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
-        file build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
-        ls -lh build/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        test -f build-arm64/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        file build-arm64/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        otool -l build-arm64/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas | grep -A3 LC_VERSION_MIN_MACOSX || true
 
-    - name: Create release package
+    - name: Package
+      run: cd build-arm64 && zip -r ../MarkdownAtlas-${{ github.ref_name }}-arm64.zip MarkdownAtlas.app
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: arm64
+        path: MarkdownAtlas-${{ github.ref_name }}-arm64.zip
+
+  build-x86_64:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build x86_64
+      run: make build-x86_64
+
+    - name: Verify build
       run: |
-        cd build && zip -r ../MarkdownAtlas-${{ github.ref_name }}.zip MarkdownAtlas.app
+        test -f build-x86_64/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        file build-x86_64/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas
+        otool -l build-x86_64/MarkdownAtlas.app/Contents/MacOS/MarkdownAtlas | grep -A3 LC_VERSION_MIN_MACOSX || true
+
+    - name: Package
+      run: cd build-x86_64 && zip -r ../MarkdownAtlas-${{ github.ref_name }}-x86_64.zip MarkdownAtlas.app
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: x86_64
+        path: MarkdownAtlas-${{ github.ref_name }}-x86_64.zip
+
+  release:
+    needs: [build-arm64, build-x86_64]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: MarkdownAtlas-${{ github.ref_name }}.zip
+        files: |
+          arm64/MarkdownAtlas-${{ github.ref_name }}-arm64.zip
+          x86_64/MarkdownAtlas-${{ github.ref_name }}-x86_64.zip
         body: |
           ## MarkdownAtlas ${{ github.ref_name }}
 
           A privacy-focused, offline macOS markdown viewer. No telemetry, no internet connection required, zero dependencies, under 1000 lines of code.
 
+          ### Downloads
+
+          | File | Architecture | Minimum macOS |
+          |---|---|---|
+          | `MarkdownAtlas-${{ github.ref_name }}-arm64.zip` | Apple Silicon (M1/M2/M3/M4) | macOS 11.0 Big Sur |
+          | `MarkdownAtlas-${{ github.ref_name }}-x86_64.zip` | Intel 64-bit | macOS 10.6 Snow Leopard |
+          | ~~i386~~ | Intel 32-bit | not available — build locally with `make build-i386` (requires Xcode 11 or earlier) |
+          | ~~PowerPC~~ | PowerPC | not available yet |
+
           ### Installation
-          1. Download `MarkdownAtlas-${{ github.ref_name }}.zip`
+          1. Download the zip for your architecture
           2. Unzip the file
           3. Move `MarkdownAtlas.app` to your Applications folder
           4. **Important:** Bypass macOS Gatekeeper (app is not code-signed)

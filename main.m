@@ -141,11 +141,14 @@
     CGFloat sidebarX = self.isSidebarVisible ? 0 : -sidebarWidth;
     self.sidebarContainer = [[NSView alloc] initWithFrame:NSMakeRect(sidebarX, 0, sidebarWidth, contentRect.size.height)];
     [self.sidebarContainer setAutoresizingMask:NSViewHeightSizable];
+    [self.sidebarContainer setWantsLayer:YES];
+    [[self.sidebarContainer layer] setBackgroundColor:[[NSColor colorWithWhite:0.93 alpha:1.0] CGColor]];
 
     NSScrollView *scrollView = [[NSScrollView alloc] initWithFrame:[self.sidebarContainer bounds]];
     [scrollView setHasVerticalScroller:YES];
     [scrollView setAutohidesScrollers:YES];
     [scrollView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [scrollView setDrawsBackground:NO];
 
     self.outlineView = [[NSOutlineView alloc] initWithFrame:scrollView.bounds];
     NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"files"];
@@ -156,6 +159,7 @@
     [self.outlineView setDataSource:self];
     [self.outlineView setDelegate:self];
     [self.outlineView setRowSizeStyle:NSTableViewRowSizeStyleDefault];
+    [self.outlineView setBackgroundColor:[NSColor clearColor]];
 
     [scrollView setDocumentView:self.outlineView];
     [self.sidebarContainer addSubview:scrollView];
@@ -224,7 +228,7 @@
     [self.textView setSelectable:YES];
     [self.textView setDelegate:self];
     [self.textView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    [[self.textView textContainer] setContainerSize:NSMakeSize(contentRect.size.width - 250 - 20, CGFLOAT_MAX)];
+    [[self.textView textContainer] setContainerSize:NSMakeSize(contentRect.size.width - leftMargin - 20, CGFLOAT_MAX)];
     [[self.textView textContainer] setWidthTracksTextView:YES];
     [self.textView setTextContainerInset:NSMakeSize(10, 10)];
 
@@ -410,20 +414,11 @@
 }
 
 - (void)loadMarkdownFile:(NSURL *)fileURL addToHistory:(BOOL)addToHistory {
-    NSError *error = nil;
-    NSString *markdown = [NSString stringWithContentsOfURL:fileURL encoding:NSUTF8StringEncoding error:&error];
-    if (error) {
-        NSLog(@"Error reading file: %@", error);
-        return;
-    }
-
     NSPoint scrollPoint = NSMakePoint(0, 0);
 
-    // Add to navigation history
     if (addToHistory) {
         [self saveCurrentScrollPosition];
 
-        // Remove all items after current index (when navigating to a new file while in history)
         if (self.navigationIndex < (NSInteger)[self.navigationHistory count] - 1) {
             NSRange rangeToRemove = NSMakeRange(self.navigationIndex + 1, [self.navigationHistory count] - self.navigationIndex - 1);
             [self.navigationHistory removeObjectsInRange:rangeToRemove];
@@ -435,28 +430,44 @@
         self.navigationIndex = (NSInteger)[self.navigationHistory count] - 1;
         [self updateNavigationButtons];
     } else {
-        // Navigating from history - restore scroll position
         if (self.navigationIndex >= 0 && self.navigationIndex < (NSInteger)[self.scrollPositions count]) {
             scrollPoint = [self.scrollPositions[self.navigationIndex] pointValue];
         }
     }
 
     self.currentFileURL = fileURL;
-    self.currentMarkdownContent = markdown;
-
-    // Display based on current mode
-    if (self.isRawMode) {
-        [self showRawText];
-    } else {
-        [self showMarkdownPreview];
-    }
-
-    // Scroll to the appropriate position
-    [[self.mainScrollView contentView] scrollToPoint:scrollPoint];
-    [self.mainScrollView reflectScrolledClipView:[self.mainScrollView contentView]];
-
-    // Update the outline view selection
     [self selectItemInOutlineView:fileURL];
+
+    BOOL isRawMode = self.isRawMode;
+    NSPoint targetScrollPoint = scrollPoint;
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError *error = nil;
+        NSString *markdown = [NSString stringWithContentsOfURL:fileURL encoding:NSUTF8StringEncoding error:&error];
+        if (error) {
+            NSLog(@"Error reading file: %@", error);
+            return;
+        }
+
+        NSAttributedString *attributed;
+        if (isRawMode) {
+            NSFont *monoFont = [NSFont fontWithName:@"Menlo" size:13];
+            NSDictionary *attrs = @{NSFontAttributeName: monoFont};
+            attributed = [[NSAttributedString alloc] initWithString:markdown attributes:attrs];
+        } else {
+            attributed = [self renderMarkdown:markdown];
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // Discard result if user has already navigated away
+            if (![self.currentFileURL isEqual:fileURL]) return;
+
+            self.currentMarkdownContent = markdown;
+            [[self.textView textStorage] setAttributedString:attributed];
+            [[self.mainScrollView contentView] scrollToPoint:targetScrollPoint];
+            [self.mainScrollView reflectScrolledClipView:[self.mainScrollView contentView]];
+        });
+    });
 }
 
 - (void)showMarkdownPreview {
@@ -570,7 +581,14 @@
         NSString *line = lines[i];
         NSMutableAttributedString *lineAttr = [[NSMutableAttributedString alloc] init];
 
-        if ([line hasPrefix:@"###### "]) {
+        if ([line hasPrefix:@"```"]) {
+            inCodeBlock = !inCodeBlock;
+            lineAttr = [[NSMutableAttributedString alloc] initWithString:[line stringByAppendingString:@"\n"]
+                attributes:@{NSFontAttributeName: codeFont, NSBackgroundColorAttributeName: [NSColor colorWithWhite:0.95 alpha:1.0]}];
+        } else if (inCodeBlock) {
+            lineAttr = [[NSMutableAttributedString alloc] initWithString:[line stringByAppendingString:@"\n"]
+                attributes:@{NSFontAttributeName: codeFont, NSBackgroundColorAttributeName: [NSColor colorWithWhite:0.95 alpha:1.0]}];
+        } else if ([line hasPrefix:@"###### "]) {
             lineAttr = [self renderHeading:line prefix:@"###### " fontSize:12 italicFont:italicFont codeFont:codeFont];
         } else if ([line hasPrefix:@"##### "]) {
             lineAttr = [self renderHeading:line prefix:@"##### " fontSize:14 italicFont:italicFont codeFont:codeFont];
@@ -582,32 +600,29 @@
             lineAttr = [self renderHeading:line prefix:@"## " fontSize:22 italicFont:italicFont codeFont:codeFont];
         } else if ([line hasPrefix:@"# "]) {
             lineAttr = [self renderHeading:line prefix:@"# " fontSize:28 italicFont:italicFont codeFont:codeFont];
-        } else if ([line hasPrefix:@"```"]) {
-            inCodeBlock = !inCodeBlock;
-            lineAttr = [[NSMutableAttributedString alloc] initWithString:[line stringByAppendingString:@"\n"]
-                attributes:@{NSFontAttributeName: codeFont, NSBackgroundColorAttributeName: [NSColor colorWithWhite:0.95 alpha:1.0]}];
-        } else if (inCodeBlock) {
-            // Inside code block - apply code styling
-            lineAttr = [[NSMutableAttributedString alloc] initWithString:[line stringByAppendingString:@"\n"]
-                attributes:@{NSFontAttributeName: codeFont, NSBackgroundColorAttributeName: [NSColor colorWithWhite:0.95 alpha:1.0]}];
+        } else if ([line hasPrefix:@"#"] && [line length] > 1 && ![[line substringFromIndex:1] hasPrefix:@"#"]) {
+            // Hashtag-style tag line: #word (no space) — render as small bold label
+            NSFont *tagFont = [NSFont boldSystemFontOfSize:11];
+            NSDictionary *attrs = @{NSFontAttributeName: tagFont, NSForegroundColorAttributeName: [NSColor grayColor]};
+            lineAttr = [[NSMutableAttributedString alloc] initWithString:[line stringByAppendingString:@"\n"] attributes:attrs];
         } else if ([line hasPrefix:@"> "]) {
             NSString *text = [line substringFromIndex:2];
             NSDictionary *attrs = @{NSFontAttributeName: italicFont, NSForegroundColorAttributeName: [NSColor grayColor]};
             lineAttr = [[NSMutableAttributedString alloc] initWithString:[text stringByAppendingString:@"\n"] attributes:attrs];
             [self applyInlineFormatting:lineAttr boldFont:boldFont italicFont:italicFont codeFont:codeFont];
-        } else if ([line hasPrefix:@"- "] || [line hasPrefix:@"* "]) {
+        } else if ([line hasPrefix:@"- "] || [line hasPrefix:@"* "] || [line hasPrefix:@"• "]) {
             NSString *text = [line substringFromIndex:2];
             NSString *bullet = nil;
 
             // Check for checkboxes - [ ] or [x] or [X]
             if ([text hasPrefix:@"[ ] "]) {
-                // Unchecked checkbox
                 bullet = [@"☐ " stringByAppendingString:[text substringFromIndex:4]];
             } else if ([text hasPrefix:@"[x] "] || [text hasPrefix:@"[X] "]) {
-                // Checked checkbox
                 bullet = [@"☑ " stringByAppendingString:[text substringFromIndex:4]];
+            } else if ([line hasPrefix:@"• "]) {
+                // Already has bullet character — keep as-is
+                bullet = line;
             } else {
-                // Regular bullet
                 bullet = [@"• " stringByAppendingString:text];
             }
 
@@ -625,7 +640,7 @@
         }
 
         // Check if this might be a table header (contains |)
-        if ([line containsString:@"|"] && i + 1 < (NSInteger)[lines count]) {
+        if (!inCodeBlock && [line containsString:@"|"] && i + 1 < (NSInteger)[lines count]) {
             NSString *nextLine = lines[i + 1];
             // Check if next line is a table separator (like |---|---|)
             if ([self isTableSeparator:nextLine]) {
@@ -748,7 +763,7 @@
     NSString *string = [attrString string];
 
     // First, handle escape sequences by replacing them with placeholders
-    NSString *escapeMarker = @"\u{FFFC}ESC"; // Object replacement character as marker
+    NSString *escapeMarker = @"\uFFFCESC";
     NSMutableDictionary *escapedChars = [NSMutableDictionary dictionary];
     NSInteger escapeIndex = 0;
 
@@ -774,7 +789,7 @@
     NSRegularExpression *codeRegex = [NSRegularExpression regularExpressionWithPattern:@"`([^`\n]+)`" options:0 error:nil];
 
     // Process inline code FIRST using placeholders to protect from other processing
-    NSString *codeMarker = @"\u{FFFC}CODE";
+    NSString *codeMarker = @"\uFFFCCODE";
     NSMutableDictionary *codeBlocks = [NSMutableDictionary dictionary];
     NSInteger codeIndex = 0;
 
@@ -859,13 +874,8 @@
 
         [attrString replaceCharactersInRange:match.range withString:linkText];
 
-        NSURL *url = [NSURL URLWithString:urlString];
-        if (!url) {
-            url = [NSURL fileURLWithPath:urlString];
-        }
-
         NSRange linkRange = NSMakeRange(match.range.location, linkText.length);
-        [attrString addAttribute:NSLinkAttributeName value:url range:linkRange];
+        [attrString addAttribute:NSLinkAttributeName value:urlString range:linkRange];
         [attrString addAttribute:NSForegroundColorAttributeName value:[NSColor blueColor] range:linkRange];
         [attrString addAttribute:NSUnderlineStyleAttributeName value:@(NSUnderlineStyleSingle) range:linkRange];
     }

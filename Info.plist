@@ -16,6 +16,8 @@
     <string>MarkdownAtlas</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.4</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSApplicationQueriesSchemes</key>

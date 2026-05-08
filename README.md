@@ -112,9 +112,20 @@ mda ~/projects/markdown-files
 
 ## Requirements
 
-- macOS
+### Pre-built binaries
+
+| Download | Architecture | Minimum macOS |
+|---|---|---|
+| `MarkdownAtlas-*-arm64.zip` | Apple Silicon (M1/M2/M3/M4) | macOS 11.0 Big Sur |
+| `MarkdownAtlas-*-x86_64.zip` | Intel 64-bit | macOS 10.6 Snow Leopard |
+| ~~`MarkdownAtlas-*-i386.zip`~~ | Intel 32-bit | not available — build locally with `make build-i386` (requires Xcode 11 or earlier) |
+| ~~`MarkdownAtlas-*-ppc.zip`~~ | PowerPC | not available yet |
+
+### Building from source
+
 - gcc with Cocoa framework
 - C2x standard support
+- `make build-arm64` / `make build-x86_64` / `make build-i386`
 
 ## Technical
 
